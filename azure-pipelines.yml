@@ -16,120 +16,162 @@ trigger:
       - main
 
 variables:
-  acrName: '<your-acr-name>'
+  acrName: 'dfragappacr01'
   imageRepository: 'ans-backend'
   containerRegistry: '$(acrName).azurecr.io'
+
   dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
   tag: '$(Build.BuildId)'
-  resourceGroup: '<your-resource-group>'
-  containerAppName: '<your-backend-container-app-name>'
-  containerAppJobName: '<your-ingestion-container-app-job-name>'
-  webAppName: '<your-frontend-app-service-name>'
-  # Azure DevOps service connection with rights on the subscription
-  azureSubscription: '<your-azure-service-connection-name>'
-  # Service connection to the container registry (Docker@2 task)
-  acrServiceConnection: '<your-acr-service-connection-name>'
+
+  resourceGroup: 'DF-RAGAPP-RG'
+  containerAppName: 'dfragappca01'
+  webAppName: 'dfragapp01'
+
+  azureSubscription: 'DF-RAGAPP-ARM-SC'
+  acrServiceConnection: 'DF-RAGAPP-ARM-SC'
 
 stages:
 
-  - stage: Build
-    displayName: Build and push backend image
-    jobs:
-      - job: BuildAndPush
-        pool:
-          vmImage: ubuntu-latest
-        steps:
-          - task: Docker@2
-            displayName: Build and push image to ACR
-            inputs:
-              containerRegistry: '$(acrServiceConnection)'
-              repository: '$(imageRepository)'
-              command: buildAndPush
-              Dockerfile: '$(dockerfilePath)'
-              tags: |
-                $(tag)
-                latest
+- stage: Build
+  displayName: Build and Push Image
 
-  - stage: DeployBackend
-    displayName: Deploy backend Container App
-    dependsOn: Build
-    jobs:
-      - deployment: DeployContainerApp
-        pool:
-          vmImage: ubuntu-latest
-        environment: production
-        strategy:
-          runOnce:
-            deploy:
-              steps:
-                - task: AzureCLI@2
-                  displayName: Update Container App image
-                  inputs:
-                    azureSubscription: '$(azureSubscription)'
-                    scriptType: bash
-                    scriptLocation: inlineScript
-                    inlineScript: |
-                      az containerapp update \
-                        --name $(containerAppName) \
-                        --resource-group $(resourceGroup) \
-                        --image $(containerRegistry)/$(imageRepository):$(tag)
+  jobs:
 
-  - stage: DeployIngestionJob
-    displayName: Update ingestion Container App Job image
-    dependsOn: Build
-    jobs:
-      - deployment: DeployJob
-        pool:
-          vmImage: ubuntu-latest
-        environment: production
-        strategy:
-          runOnce:
-            deploy:
-              steps:
-                - task: AzureCLI@2
-                  displayName: Update Container App Job image
-                  inputs:
-                    azureSubscription: '$(azureSubscription)'
-                    scriptType: bash
-                    scriptLocation: inlineScript
-                    inlineScript: |
-                      az containerapp job update \
-                        --name $(containerAppJobName) \
-                        --resource-group $(resourceGroup) \
-                        --image $(containerRegistry)/$(imageRepository):$(tag)
-                      # The job's command (`python -m backend.data.pipeline`)
-                      # and its cron schedule are configured once on the Job
-                      # resource itself (portal or `az containerapp job
-                      # create`), not re-set on every deploy here — this step
-                      # only refreshes which image the job runs.
+  - job: BuildAndPush
 
-  - stage: DeployFrontend
-    displayName: Deploy frontend to App Service
-    dependsOn: Build
-    jobs:
-      - deployment: DeployWebApp
-        pool:
-          vmImage: ubuntu-latest
-        environment: production
-        strategy:
-          runOnce:
-            deploy:
-              steps:
-                - task: ArchiveFiles@2
-                  displayName: Archive frontend/
-                  inputs:
-                    rootFolderOrFile: '$(Build.SourcesDirectory)/frontend'
-                    includeRootFolder: false
-                    archiveType: zip
-                    archiveFile: '$(Build.ArtifactStagingDirectory)/frontend.zip'
-                - task: AzureWebApp@1
-                  displayName: Deploy to App Service
-                  inputs:
-                    azureSubscription: '$(azureSubscription)'
-                    appType: webAppLinux
-                    appName: '$(webAppName)'
-                    package: '$(Build.ArtifactStagingDirectory)/frontend.zip'
-                    startUpCommand: 'bash startup.sh'
+    pool:
+      vmImage: ubuntu-latest
+
+    steps:
+
+    - checkout: self
+
+    - task: Docker@2
+      displayName: Build and Push to ACR
+      inputs:
+        containerRegistry: '$(acrServiceConnection)'
+        repository: '$(imageRepository)'
+        command: 'buildAndPush'
+        Dockerfile: '$(dockerfilePath)'
+        tags: |
+          $(tag)
+          latest
+
+
+# ==========================================================
+# ENABLE AFTER IMAGE IS SUCCESSFULLY AVAILABLE IN ACR
+# ==========================================================
+
+# - stage: DeployBackend
+#   displayName: Deploy Backend Container App
+#
+#   dependsOn: Build
+#
+#   jobs:
+#   - deployment: DeployContainerApp
+#
+#     environment: production
+#
+#     pool:
+#       vmImage: ubuntu-latest
+#
+#     strategy:
+#       runOnce:
+#         deploy:
+#           steps:
+#
+#           - task: AzureCLI@2
+#             displayName: Update Container App Image
+#
+#             inputs:
+#               azureSubscription: '$(azureSubscription)'
+#               scriptType: bash
+#               scriptLocation: inlineScript
+#
+#               inlineScript: |
+#                 az containerapp update \
+#                   --name $(containerAppName) \
+#                   --resource-group $(resourceGroup) \
+#                   --image $(containerRegistry)/$(imageRepository):$(tag)
+
+
+# ==========================================================
+# ENABLE AFTER BACKEND DEPLOYMENT IS VERIFIED
+# ==========================================================
+
+# - stage: DeployFrontend
+#   displayName: Deploy Frontend App Service
+#
+#   dependsOn: Build
+#
+#   jobs:
+#   - deployment: DeployWebApp
+#
+#     environment: production
+#
+#     pool:
+#       vmImage: ubuntu-latest
+#
+#     strategy:
+#       runOnce:
+#         deploy:
+#           steps:
+#
+#           - task: ArchiveFiles@2
+#             displayName: Archive frontend
+#
+#             inputs:
+#               rootFolderOrFile: '$(Build.SourcesDirectory)/frontend'
+#               includeRootFolder: false
+#               archiveType: zip
+#               archiveFile: '$(Build.ArtifactStagingDirectory)/frontend.zip'
+#
+#           - task: AzureWebApp@1
+#             displayName: Deploy Frontend
+#
+#             inputs:
+#               azureSubscription: '$(azureSubscription)'
+#               appType: webAppLinux
+#               appName: '$(webAppName)'
+#               package: '$(Build.ArtifactStagingDirectory)/frontend.zip'
+#               startUpCommand: 'bash startup.sh'
+
+
+# ==========================================================
+# ENABLE AFTER CONTAINER APP JOB IS CREATED
+# ==========================================================
+
+# - stage: DeployIngestionJob
+#   displayName: Update ingestion Container App Job image
+#
+#   dependsOn: Build
+#
+#   jobs:
+#   - deployment: DeployJob
+#
+#     environment: production
+#
+#     pool:
+#       vmImage: ubuntu-latest
+#
+#     strategy:
+#       runOnce:
+#         deploy:
+#           steps:
+#
+#           - task: AzureCLI@2
+#             displayName: Update Container App Job image
+#
+#             inputs:
+#               azureSubscription: '$(azureSubscription)'
+#               scriptType: bash
+#               scriptLocation: inlineScript
+#
+#               inlineScript: |
+#                 az containerapp job update \
+#                   --name $(containerAppJobName) \
+#                   --resource-group $(resourceGroup) \
+#                   --image $(containerRegistry)/$(imageRepository):$(tag)
 
 # Database migrations (alembic upgrade head) are deliberately NOT run
 # automatically on every push here — see README.md's "Running
