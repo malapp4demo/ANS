@@ -28,7 +28,7 @@ variables:
   webAppName: 'dfragapp01'
 
   azureSubscription: 'DF-RAGAPP-ARM-SC'
-  acrServiceConnection: 'DF-RAGAPP-ARM-SC'
+  acrServiceConnection: 'DF-RAGAPP-ACR-SC'
 
 stages:
 
