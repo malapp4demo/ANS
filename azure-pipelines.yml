@@ -10,56 +10,6 @@
 # for your Azure resources and DevOps service connections — none of
 # this could be filled in without access to your Azure subscription.
 
-trigger:
-  branches:
-    include:
-      - main
-
-variables:
-  acrName: 'dfragappacr01'
-  imageRepository: 'ans-backend'
-  containerRegistry: '$(acrName).azurecr.io'
-
-  dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
-  tag: '$(Build.BuildId)'
-
-  resourceGroup: 'DF-RAGAPP-RG'
-  containerAppName: 'dfragappca01'
-  containerAppJobName: 'dfragappjob01'   # Update with actual job name
-  webAppName: 'dfragapp01'
-
-  azureSubscription: 'DF-RAGAPP-ARM-SC'
-  acrServiceConnection: 'DF-RAGAPP-ACR-SC'
-
-stages:
-
-# ==========================================================
-# BUILD AND PUSH IMAGE
-# ==========================================================
-- stage: Build
-  displayName: Build and Push Image
-
-  jobs:
-  - job: BuildAndPush
-    displayName: Build and Push Docker Image
-
-    pool:
-      vmImage: 'ubuntu-latest'
-
-    steps:
-    - checkout: self
-
-    - task: Docker@2
-      displayName: Build and Push to ACR
-      inputs:
-        containerRegistry: '$(acrServiceConnection)'
-        repository: '$(imageRepository)'
-        command: 'buildAndPush'
-        Dockerfile: '$(dockerfilePath)'
-        tags: |
-          $(tag)
-          latest
-
 # ==========================================================
 # DEPLOY BACKEND CONTAINER APP
 # ==========================================================
@@ -68,29 +18,24 @@ stages:
   dependsOn: Build
 
   jobs:
-  - deployment: DeployContainerApp
+  - job: DeployContainerApp
     displayName: Deploy Backend
-
-    environment: production
 
     pool:
       vmImage: 'ubuntu-latest'
 
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - task: AzureCLI@2
-            displayName: Update Container App Image
-            inputs:
-              azureSubscription: '$(azureSubscription)'
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              inlineScript: |
-                az containerapp update \
-                  --name $(containerAppName) \
-                  --resource-group $(resourceGroup) \
-                  --image $(containerRegistry)/$(imageRepository):$(tag)
+    steps:
+    - task: AzureCLI@2
+      displayName: Update Container App Image
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        scriptType: bash
+        scriptLocation: inlineScript
+        inlineScript: |
+          az containerapp update \
+            --name $(containerAppName) \
+            --resource-group $(resourceGroup) \
+            --image $(containerRegistry)/$(imageRepository):$(tag)
 
 # ==========================================================
 # DEPLOY FRONTEND APP SERVICE
@@ -100,34 +45,29 @@ stages:
   dependsOn: Build
 
   jobs:
-  - deployment: DeployWebApp
+  - job: DeployWebApp
     displayName: Deploy Frontend
-
-    environment: production
 
     pool:
       vmImage: 'ubuntu-latest'
 
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - task: ArchiveFiles@2
-            displayName: Archive Frontend
-            inputs:
-              rootFolderOrFile: '$(Build.SourcesDirectory)/frontend'
-              includeRootFolder: false
-              archiveType: zip
-              archiveFile: '$(Build.ArtifactStagingDirectory)/frontend.zip'
+    steps:
+    - task: ArchiveFiles@2
+      displayName: Archive Frontend
+      inputs:
+        rootFolderOrFile: '$(Build.SourcesDirectory)/frontend'
+        includeRootFolder: false
+        archiveType: zip
+        archiveFile: '$(Build.ArtifactStagingDirectory)/frontend.zip'
 
-          - task: AzureWebApp@1
-            displayName: Deploy Frontend
-            inputs:
-              azureSubscription: '$(azureSubscription)'
-              appType: 'webAppLinux'
-              appName: '$(webAppName)'
-              package: '$(Build.ArtifactStagingDirectory)/frontend.zip'
-              startUpCommand: 'bash startup.sh'
+    - task: AzureWebApp@1
+      displayName: Deploy Frontend
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        appType: 'webAppLinux'
+        appName: '$(webAppName)'
+        package: '$(Build.ArtifactStagingDirectory)/frontend.zip'
+        startUpCommand: 'bash startup.sh'
 
 # ==========================================================
 # DEPLOY INGESTION CONTAINER APP JOB
@@ -137,29 +77,25 @@ stages:
   dependsOn: Build
 
   jobs:
-  - deployment: DeployJob
+  - job: DeployJob
     displayName: Deploy Ingestion Job
-
-    environment: production
 
     pool:
       vmImage: 'ubuntu-latest'
 
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - task: AzureCLI@2
-            displayName: Update Container App Job Image
-            inputs:
-              azureSubscription: '$(azureSubscription)'
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              inlineScript: |
-                az containerapp job update \
-                  --name $(containerAppJobName) \
-                  --resource-group $(resourceGroup) \
-                  --image $(containerRegistry)/$(imageRepository):$(tag)
+    steps:
+    - task: AzureCLI@2
+      displayName: Update Container App Job Image
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        scriptType: bash
+        scriptLocation: inlineScript
+        inlineScript: |
+          az containerapp job update \
+            --name $(containerAppJobName) \
+            --resource-group $(resourceGroup) \
+            --image $(containerRegistry)/$(imageRepository):$(tag)
+            
 # Database migrations (alembic upgrade head) are deliberately NOT run
 # automatically on every push here — see README.md's "Running
 # migrations" section for the manual, explicit invocation pattern
