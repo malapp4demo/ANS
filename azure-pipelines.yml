@@ -31,45 +31,13 @@ variables:
 
   dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
   tag: '$(Build.BuildId)'
-<<<<<<< HEAD
-=======
 
->>>>>>> 71b1c695d9fd55d24c672b397d26154ad8c2fab3
   resourceGroup: 'DF-RAGAPP-RG'
+
   containerAppName: 'dfragappca01'
-  containerAppJobName: 'dfragappcaj01'
+  containerAppJobName: 'dfragappjob01'
+
   webAppName: 'dfragapp01'
-<<<<<<< HEAD
-  # Azure DevOps service connection with rights on the subscription —
-  # its service principal needs AcrPush (or Contributor) on the
-  # registry itself, since it now drives `az acr build` directly
-  # instead of a separate Docker-registry-scoped service connection.
-  azureSubscription: 'DF-RAGAPP-ARM-SC'
-
-stages:
-
-  - stage: Build
-    displayName: Build backend image via ACR Tasks
-    jobs:
-      - job: BuildImage
-        pool:
-          vmImage: ubuntu-latest
-        steps:
-          - task: AzureCLI@2
-            displayName: az acr build
-            inputs:
-              azureSubscription: '$(azureSubscription)'
-              scriptType: bash
-              scriptLocation: inlineScript
-              inlineScript: |
-                az acr build \
-                  --registry $(acrName) \
-                  --resource-group $(resourceGroup) \
-                  --image $(imageRepository):$(tag) \
-                  --image $(imageRepository):latest \
-                  --file $(dockerfilePath) \
-                  $(Build.SourcesDirectory)
-=======
 
   azureSubscription: 'DF-RAGAPP-ARM-SC'
   acrServiceConnection: 'DF-RAGAPP-ACR-SC'
@@ -77,11 +45,10 @@ stages:
 stages:
 
 # ==========================================================
-# BUILD IMAGE AND PUSH TO ACR
+# BUILD AND PUSH IMAGE
 # ==========================================================
 - stage: Build
   displayName: Build and Push Image
->>>>>>> 71b1c695d9fd55d24c672b397d26154ad8c2fab3
 
   jobs:
   - job: BuildAndPush
@@ -132,7 +99,7 @@ stages:
             --image $(containerRegistry)/$(imageRepository):$(tag)
 
 # ==========================================================
-# DEPLOY FRONTEND APP SERVICE
+# DEPLOY FRONTEND APP SERVICE (STREAMLIT)
 # ==========================================================
 - stage: DeployFrontend
   displayName: Deploy Frontend App Service
@@ -140,7 +107,7 @@ stages:
 
   jobs:
   - job: DeployWebApp
-    displayName: Deploy Frontend
+    displayName: Deploy Streamlit Frontend
 
     pool:
       vmImage: 'ubuntu-latest'
@@ -151,7 +118,7 @@ stages:
       inputs:
         rootFolderOrFile: '$(Build.SourcesDirectory)/frontend'
         includeRootFolder: false
-        archiveType: 'zip'
+        archiveType: zip
         archiveFile: '$(Build.ArtifactStagingDirectory)/frontend.zip'
 
     - task: AzureWebApp@1
@@ -188,7 +155,7 @@ stages:
           az containerapp job update \
             --name $(containerAppJobName) \
             --resource-group $(resourceGroup) \
-            --image $(containerRegistry)/$(imageRepository):$(tag)
+            --image $(containerRegistry
             
 # Database migrations (alembic upgrade head) are deliberately NOT run
 # automatically on every push here — see README.md's "Running
