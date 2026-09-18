@@ -15,38 +15,26 @@ trigger:
     include:
       - main
 
-
-
 variables:
   acrName: 'dfragappacr01'
   imageRepository: 'ans-backend'
   containerRegistry: '$(acrName).azurecr.io'
 
-
-
   dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
   tag: '$(Build.BuildId)'
 
-
-
   resourceGroup: 'DF-RAGAPP-RG'
   containerAppName: 'dfragappca01'
-  containerAppJobName: 'dfragappjob01'   # Update with actual job name
+  containerAppJobName: 'dfragappcaj01'
   webAppName: 'dfragapp01'
-
-
 
   azureSubscription: 'DF-RAGAPP-ARM-SC'
   acrServiceConnection: 'DF-RAGAPP-ACR-SC'
 
-
-
 stages:
 
-
-
 # ==========================================================
-# BUILD AND PUSH IMAGE
+# BUILD IMAGE AND PUSH TO ACR
 # ==========================================================
 - stage: Build
   displayName: Build and Push Image
@@ -91,8 +79,8 @@ stages:
       displayName: Update Container App Image
       inputs:
         azureSubscription: '$(azureSubscription)'
-        scriptType: bash
-        scriptLocation: inlineScript
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
         inlineScript: |
           az containerapp update \
             --name $(containerAppName) \
@@ -119,7 +107,7 @@ stages:
       inputs:
         rootFolderOrFile: '$(Build.SourcesDirectory)/frontend'
         includeRootFolder: false
-        archiveType: zip
+        archiveType: 'zip'
         archiveFile: '$(Build.ArtifactStagingDirectory)/frontend.zip'
 
     - task: AzureWebApp@1
@@ -150,8 +138,8 @@ stages:
       displayName: Update Container App Job Image
       inputs:
         azureSubscription: '$(azureSubscription)'
-        scriptType: bash
-        scriptLocation: inlineScript
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
         inlineScript: |
           az containerapp job update \
             --name $(containerAppJobName) \
