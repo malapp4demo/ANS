@@ -9,6 +9,6 @@
 # api_client.py's get_backend_url().
 
 python -m streamlit run app.py \
-    --server.port 8000 \
+    --server.port $PORT \
     --server.address 0.0.0.0 \
     --server.headless true
