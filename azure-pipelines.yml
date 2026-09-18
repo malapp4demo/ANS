@@ -35,7 +35,7 @@ variables:
   resourceGroup: 'DF-RAGAPP-RG'
 
   containerAppName: 'dfragappca01'
-  containerAppJobName: 'dfragappjob01'
+  containerAppJobName: 'dfragappcaj01'
 
   webAppName: 'dfragapp01'
 
