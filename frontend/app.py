@@ -155,6 +155,14 @@ with st.sidebar:
             "द्राक्ष",
             "कांदा",
             "मका",
+            "Banana",
+            "Sugarcane",
+            "Grape",
+            "Soybean",
+            "Rice",
+            "Pigeon Pea",
+            "Onion",
+            "Potato"
         ],
         index=0,
     )
