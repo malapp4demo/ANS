@@ -155,7 +155,7 @@ stages:
           az containerapp job update \
             --name $(containerAppJobName) \
             --resource-group $(resourceGroup) \
-            --image $(containerRegistry
+            --image $(containerRegistry)
             
 # Database migrations (alembic upgrade head) are deliberately NOT run
 # automatically on every push here — see README.md's "Running
